@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat-demo-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: chat-demo-api
+  template:
+    metadata:
+      labels:
+        app: chat-demo-api
+    spec:
+      containers:
+        - name: chat-demo-api
+          image: gcr.io/project-ff40902e-1aa9-44fe-bb1/chat-demo-api:v1
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
