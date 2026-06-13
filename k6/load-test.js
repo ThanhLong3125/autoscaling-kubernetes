@@ -1,21 +1,19 @@
 import http from "k6/http";
 import { sleep, check } from "k6";
 
-const BASE_URL =
-  __ENV.BASE_URL || "http://localhost:8080";
+const BASE_URL = __ENV.BASE_URL || "http://localhost:8080";
+const VUS = Number(__ENV.VUS || 20);
+const DURATION = __ENV.DURATION || "2m";
 
 export const options = {
-  stages: [
-    { duration: "1m", target: 20 },
-    { duration: "2m", target: 50 },
-    { duration: "2m", target: 100 },
-    { duration: "2m", target: 150 },
-    { duration: "1m", target: 0 }
-  ],
+  vus: VUS,
+  duration: DURATION,
 };
 
 export default function () {
-  const res = http.get(`${BASE_URL}/cpu`);
+  const res = http.get(`${BASE_URL}/cpu`, {
+    timeout: "10s",
+  });
 
   check(res, {
     "status is 200": (r) => r.status === 200,
