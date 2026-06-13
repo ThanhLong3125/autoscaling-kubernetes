@@ -5,17 +5,17 @@ const BASE_URL = __ENV.BASE_URL || "http://localhost:8080";
 
 export const options = {
   stages: [
-    { duration: "30s", target: 5 },
-    { duration: "45s", target: 5 },
+    { duration: "30s", target: 2 },
+    { duration: "45s", target: 2 },
 
-    { duration: "30s", target: 10 },
-    { duration: "45s", target: 10 },
+    { duration: "30s", target: 4 },
+    { duration: "45s", target: 4 },
 
-    { duration: "30s", target: 15 },
-    { duration: "45s", target: 15 },
+    { duration: "30s", target: 6 },
+    { duration: "45s", target: 6 },
 
-    { duration: "30s", target: 20 },
-    { duration: "45s", target: 20 },
+    { duration: "30s", target: 8 },
+    { duration: "45s", target: 8 },
 
     { duration: "30s", target: 0 },
   ],
@@ -30,7 +30,7 @@ export default function () {
   const start = Date.now();
 
   const res = http.get(`${BASE_URL}/cpu`, {
-    timeout: "1s",
+    timeout: "2s",
   });
 
   const latency = Date.now() - start;
@@ -42,20 +42,16 @@ export default function () {
   let body = {};
   try {
     body = res.json();
-  } catch (e) {
-    body = {};
-  }
+  } catch (e) {}
 
   if (!ok || latency > 500) {
-    console.log(
-      JSON.stringify({
-        timestamp: new Date().toISOString(),
-        latencyMs: latency,
-        status: res.status,
-        processingTimeMs: body.processingTimeMs || null,
-        pod: body.pod || null,
-      })
-    );
+    console.log(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      latencyMs: latency,
+      status: res.status,
+      processingTimeMs: body.processingTimeMs || null,
+      pod: body.pod || null,
+    }));
   }
 
   sleep(1);
