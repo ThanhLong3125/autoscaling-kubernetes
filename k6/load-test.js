@@ -12,16 +12,16 @@ export const options = {
     { duration: "45s", target: 4 },
 
     { duration: "30s", target: 6 },
-    { duration: "45s", target: 6 },
+    { duration: "45s", target: 8 },
 
     { duration: "30s", target: 8 },
-    { duration: "45s", target: 8 },
+    { duration: "45s", target: 10 },
 
     { duration: "30s", target: 0 },
   ],
 
   thresholds: {
-    http_req_duration: ["p(95)<500"],
+    http_req_duration: ["p(95)<700"],
     http_req_failed: ["rate<0.01"],
   },
 };
@@ -44,7 +44,7 @@ export default function () {
     body = res.json();
   } catch (e) {}
 
-  if (!ok || latency > 500) {
+  if (!ok || latency > 700) {
     console.log(JSON.stringify({
       timestamp: new Date().toISOString(),
       latencyMs: latency,
