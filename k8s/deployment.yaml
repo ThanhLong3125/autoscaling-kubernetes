@@ -1,23 +1,35 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: chat-demo-api
+  name: invoice-pdf-api
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: chat-demo-api
+      app: invoice-pdf-api
   template:
     metadata:
       labels:
-        app: chat-demo-api
+        app: invoice-pdf-api
     spec:
       containers:
-        - name: chat-demo-api
-          image: asia-southeast1-docker.pkg.dev/project-ff40902e-1aa9-44fe-bb1/chat-repo/chat-demo-api:v1
+        - name: invoice-pdf-api
+          image: asia-southeast1-docker.pkg.dev/project-ff40902e-1aa9-44fe-bb1/invoice-repo/invoice-pdf-api:v1
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             requests:
               cpu: "50m"

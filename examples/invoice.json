@@ -1,0 +1,23 @@
+{
+  "invoiceNumber": "INV-DEMO-001",
+  "customerName": "Cong ty Demo",
+  "currency": "VND",
+  "issuedAt": "2026-06-13T10:00:00.000Z",
+  "items": [
+    {
+      "description": "Goi dich vu dien toan dam may",
+      "quantity": 2,
+      "unitPrice": 250000
+    },
+    {
+      "description": "Phi ho tro ky thuat",
+      "quantity": 1,
+      "unitPrice": 500000
+    },
+    {
+      "description": "Phi luu luong vuot muc",
+      "quantity": 3,
+      "unitPrice": 75000
+    }
+  ]
+}

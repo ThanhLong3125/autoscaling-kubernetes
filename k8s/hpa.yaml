@@ -1,12 +1,12 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: chat-demo-api-hpa
+  name: invoice-pdf-api-hpa
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: chat-demo-api
+    name: invoice-pdf-api
   minReplicas: 2
   maxReplicas: 10
   metrics:
