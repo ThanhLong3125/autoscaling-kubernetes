@@ -1,5 +1,8 @@
 import http from "k6/http";
-import { sleep } from "k6";
+import { sleep, check } from "k6";
+
+const BASE_URL =
+  __ENV.BASE_URL || "http://localhost:8080";
 
 export const options = {
   stages: [
@@ -12,6 +15,11 @@ export const options = {
 };
 
 export default function () {
-  http.get("http://EXTERNAL_IP/cpu");
+  const res = http.get(`${BASE_URL}/cpu`);
+
+  check(res, {
+    "status is 200": (r) => r.status === 200,
+  });
+
   sleep(1);
 }
