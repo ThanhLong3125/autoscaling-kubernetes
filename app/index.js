@@ -3,41 +3,57 @@ const os = require("os");
 
 const app = express();
 const PORT = 8080;
+const HEALTH_DELAY_MS = getDelay("HEALTH_DELAY_MS", 640);
+const MESSAGES_DELAY_MS = getDelay("MESSAGES_DELAY_MS", 640);
+
+function getDelay(name, defaultValue) {
+  const value = Number(process.env[name] ?? defaultValue);
+
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${name} must be a non-negative number`);
+  }
+
+  return value;
+}
 
 /**
  * Health Check
  */
 app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    service: "chat-demo-api",
-    pod: os.hostname(),
-    timestamp: new Date().toISOString(),
-  });
+  setTimeout(() => {
+    res.json({
+      status: "ok",
+      service: "chat-demo-api",
+      pod: os.hostname(),
+      timestamp: new Date().toISOString(),
+    });
+  }, HEALTH_DELAY_MS);
 });
 
 /**
  * Simulate chat messages
  */
 app.get("/messages", (req, res) => {
-  res.json({
-    conversationId: "demo-room-1",
-    messages: [
-      {
-        id: 1,
-        sender: "user_a",
-        content: "Xin chào",
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 2,
-        sender: "user_b",
-        content: "Chào bạn",
-        createdAt: new Date().toISOString(),
-      },
-    ],
-    servedBy: os.hostname(),
-  });
+  setTimeout(() => {
+    res.json({
+      conversationId: "demo-room-1",
+      messages: [
+        {
+          id: 1,
+          sender: "user_a",
+          content: "Xin chào",
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: 2,
+          sender: "user_b",
+          content: "Chào bạn",
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      servedBy: os.hostname(),
+    });
+  }, MESSAGES_DELAY_MS);
 });
 
 /**

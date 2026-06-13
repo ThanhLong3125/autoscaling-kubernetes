@@ -15,6 +15,7 @@ spec:
       containers:
         - name: chat-demo-api
           image: asia-southeast1-docker.pkg.dev/project-ff40902e-1aa9-44fe-bb1/chat-repo/chat-demo-api:v1
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           resources:
