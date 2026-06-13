@@ -52,10 +52,13 @@ app.get("/cpu", (req, res) => {
     Math.sqrt(Math.random());
   }
 
+  const processingTime = Date.now() - start;
+
   res.json({
     status: "ok",
     pod: os.hostname(),
-    processingTimeMs: Date.now() - start,
+    processingTimeMs: processingTime,
+    timestamp: new Date().toISOString(),
   });
 });
 

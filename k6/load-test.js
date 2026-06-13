@@ -1,8 +1,7 @@
 import http from "k6/http";
 import { sleep, check } from "k6";
 
-const BASE_URL =
-  __ENV.BASE_URL || "http://localhost:8080";
+const BASE_URL = __ENV.BASE_URL || "http://localhost:8080";
 
 export const options = {
   stages: [
@@ -28,13 +27,36 @@ export const options = {
 };
 
 export default function () {
+  const start = Date.now();
+
   const res = http.get(`${BASE_URL}/cpu`, {
     timeout: "1s",
   });
 
-  check(res, {
+  const latency = Date.now() - start;
+
+  const ok = check(res, {
     "status is 200": (r) => r.status === 200,
   });
+
+  let body = {};
+  try {
+    body = res.json();
+  } catch (e) {
+    body = {};
+  }
+
+  if (!ok || latency > 500) {
+    console.log(
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        latencyMs: latency,
+        status: res.status,
+        processingTimeMs: body.processingTimeMs || null,
+        pod: body.pod || null,
+      })
+    );
+  }
 
   sleep(1);
 }
