@@ -78,6 +78,29 @@ Ba lần đo hiện tại trên GKE cho ngưỡng HTTP average 250 ms, HTTP p95 
 PDF render p95 400 ms. Các ngưỡng này chỉ phục vụ thí nghiệm so sánh; nếu hệ
 thống có SLA nghiệp vụ cụ thể thì SLA phải được ưu tiên.
 
+## Cài đặt k6 trên Ubuntu/Debian
+
+Cài k6 từ repository chính thức bằng `apt`:
+
+```bash
+sudo gpg -k
+
+curl -fsSL https://dl.k6.io/key.gpg | \
+  sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+
+echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | \
+  sudo tee /etc/apt/sources.list.d/k6.list
+
+sudo apt update
+sudo apt install k6 -y
+```
+
+Kiểm tra cài đặt:
+
+```bash
+k6 version
+```
+
 ## Chạy k6
 
 Dùng lệnh do script baseline in ra, ví dụ:
