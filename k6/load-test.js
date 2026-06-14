@@ -70,7 +70,7 @@ export default function () {
   check(response, {
     "status is 200": (result) => result.status === 200,
     "response is PDF": (result) =>
-      result.headers["Content-Type"]?.includes("application/pdf"),
+      (result.headers["Content-Type"] || "").includes("application/pdf"),
     "request was handled by a pod": (result) =>
       Boolean(result.headers["X-Pod-Name"]),
   });
