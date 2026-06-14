@@ -3,9 +3,9 @@ import { check, sleep } from "k6";
 import { Trend } from "k6/metrics";
 
 const BASE_URL = (__ENV.BASE_URL || "http://localhost:8080").replace(/\/$/, "");
-const HTTP_AVG_THRESHOLD_MS = Number(__ENV.HTTP_AVG_THRESHOLD_MS || 50);
-const HTTP_P95_THRESHOLD_MS = Number(__ENV.HTTP_P95_THRESHOLD_MS || 100);
-const RENDER_P95_THRESHOLD_MS = Number(__ENV.RENDER_P95_THRESHOLD_MS || 100);
+const HTTP_AVG_THRESHOLD_MS = Number(__ENV.HTTP_AVG_THRESHOLD_MS || 250);
+const HTTP_P95_THRESHOLD_MS = Number(__ENV.HTTP_P95_THRESHOLD_MS || 450);
+const RENDER_P95_THRESHOLD_MS = Number(__ENV.RENDER_P95_THRESHOLD_MS || 400);
 const processingTime = new Trend("invoice_processing_time", true);
 
 export const options = {

@@ -184,7 +184,7 @@ async function main() {
   );
 
   console.log(
-    `Suggested exploratory thresholds (${THRESHOLD_MULTIPLIER}x baseline):`,
+    `Single-run threshold candidates (${THRESHOLD_MULTIPLIER}x baseline):`,
   );
   console.log(`  HTTP average < ${httpAverageThreshold} ms`);
   console.log(`  HTTP p95     < ${httpP95Threshold} ms`);
@@ -194,7 +194,10 @@ async function main() {
     `HTTP_AVG_THRESHOLD_MS=${httpAverageThreshold} HTTP_P95_THRESHOLD_MS=${httpP95Threshold} RENDER_P95_THRESHOLD_MS=${renderP95Threshold} BASE_URL=${BASE_URL} k6 run k6/load-test.js`,
   );
   console.log(
-    "\nThese are baseline-derived experimental thresholds, not production SLAs.",
+    "\nRepeat the baseline at least 3 times and use the largest candidate for each metric.",
+  );
+  console.log(
+    "These are baseline-derived experimental thresholds, not production SLAs.",
   );
 }
 

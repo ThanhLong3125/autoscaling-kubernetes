@@ -72,17 +72,20 @@ Khi ứng dụng chạy trên GKE, đo lại qua external IP thay vì dùng số
 BASE_URL=http://EXTERNAL_IP REQUESTS=50 node scripts/measure-response-time.js
 ```
 
-Ngưỡng suy ra từ baseline chỉ phục vụ thí nghiệm so sánh. Nếu hệ thống có SLA
-nghiệp vụ cụ thể thì SLA phải được ưu tiên.
+Nên chạy baseline ít nhất ba lần trong cùng điều kiện. Với mỗi chỉ số, lấy giá
+trị lớn nhất giữa các lần chạy, nhân hệ số 2 và làm tròn lên theo bước 50 ms.
+Ba lần đo hiện tại trên GKE cho ngưỡng HTTP average 250 ms, HTTP p95 450 ms và
+PDF render p95 400 ms. Các ngưỡng này chỉ phục vụ thí nghiệm so sánh; nếu hệ
+thống có SLA nghiệp vụ cụ thể thì SLA phải được ưu tiên.
 
 ## Chạy k6
 
 Dùng lệnh do script baseline in ra, ví dụ:
 
 ```bash
-HTTP_AVG_THRESHOLD_MS=50 \
-HTTP_P95_THRESHOLD_MS=100 \
-RENDER_P95_THRESHOLD_MS=100 \
+HTTP_AVG_THRESHOLD_MS=250 \
+HTTP_P95_THRESHOLD_MS=450 \
+RENDER_P95_THRESHOLD_MS=400 \
 BASE_URL=http://EXTERNAL_IP \
 k6 run k6/load-test.js
 ```
