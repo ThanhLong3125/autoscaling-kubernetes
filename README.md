@@ -131,10 +131,11 @@ trong [`EXPERIMENT_GUIDE.md`](EXPERIMENT_GUIDE.md).
 2. Apply `deployment.yaml` và `service.yaml`.
 3. Chờ external IP và kiểm tra `/healthz`.
 4. Chạy baseline qua external IP để chọn ngưỡng.
-5. Chạy capacity test cho cấu hình fixed, HPA 240% và HPA 200%.
-6. Thu hẹp dải RPS quanh knee và chạy lại với bước 1--2 request/giây.
-7. Chạy HPA reaction profile cho hai target.
-8. Lặp mỗi cấu hình ít nhất ba lần và so sánh median cùng min--max.
+5. Chạy pilot capacity với 2 Pod cố định để khoanh vùng knee.
+6. Thu hẹp dải RPS quanh knee và lặp capacity test ba lần.
+7. Tính target HPA từ CPU tại các mức tải trước knee.
+8. Chạy HPA reaction profile cho target 300% và 250%.
+9. Lặp mỗi target ít nhất ba lần và so sánh median, min--max cùng pod-seconds.
 
 Các manifest HPA cho vòng kiểm chứng mới:
 
