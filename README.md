@@ -112,9 +112,9 @@ LOAD_PROFILE=capacity \
 ./scripts/run-experiment.sh
 ```
 
-Profile `capacity` mặc định quét rộng 10, 20, 40, 60, 80, 100 và
-120 request/giây để tìm vùng knee. Sau đó dùng biến `CAPACITY_RATES` để chạy
-lại chi tiết quanh vùng suy giảm. Profile `hpa` phát tải
+Pilot đã xác định vùng knee của 2 Pod nằm giữa 10 và 20 request/giây. Profile
+`capacity` mặc định hiện đo chi tiết các mức 10, 12, 14, 16, 18 và
+20 request/giây, mỗi mức 3 phút. Profile `hpa` phát tải
 5, 10, 15, 20, 25, 15 và 5 request/giây để quan sát scale-up và phục hồi.
 Hai profile dùng arrival rate cố định, vì vậy offered load không tự giảm khi
 response time tăng.

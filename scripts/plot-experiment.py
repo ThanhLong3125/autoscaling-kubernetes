@@ -108,6 +108,9 @@ def read_k8s(path):
                     "deployment_ready_replicas": optional_number(
                         row["deployment_ready_replicas"]
                     ),
+                    "deployment_desired_replicas": optional_number(
+                        row["deployment_desired_replicas"]
+                    ),
                     "hpa_desired_replicas": optional_number(
                         row["hpa_desired_replicas"]
                     ),
@@ -127,7 +130,10 @@ def summarize_levels(points):
     rows = []
     for level in sorted(groups):
         metrics = groups[level]
-        durations = metrics["http_req_duration"]
+        durations = (
+            metrics["successful_http_req_duration"]
+            or metrics["http_req_duration"]
+        )
         failures = metrics["http_req_failed"]
         requests = metrics["http_reqs"]
         elapsed = level_elapsed_seconds(points, level)
@@ -175,10 +181,20 @@ def build_timeline(points, k8s_rows, window):
         selected = [
             point for point in points if cursor <= point["time"] < next_cursor
         ]
-        durations = [
+        successful_durations = [
+            point["value"]
+            for point in selected
+            if point["metric"] == "successful_http_req_duration"
+        ]
+        durations = successful_durations or [
             point["value"]
             for point in selected
             if point["metric"] == "http_req_duration"
+        ]
+        requests = [
+            point["value"]
+            for point in selected
+            if point["metric"] == "http_reqs"
         ]
         failures = [
             point["value"]
@@ -194,7 +210,7 @@ def build_timeline(points, k8s_rows, window):
             {
                 "elapsed_s": cursor - start + window / 2,
                 "offered_rps": Counter(levels).most_common(1)[0][0] if levels else 0,
-                "achieved_rps": len(durations) / window,
+                "achieved_rps": sum(requests) / window,
                 "p95_ms": percentile(durations, 95),
                 "error_pct": (
                     100 * sum(failures) / len(failures) if failures else 0
@@ -209,13 +225,27 @@ def build_timeline(points, k8s_rows, window):
             samples[row["timestamp"]].append(row)
 
     k8s_series = []
-    for sample_rows in samples.values():
+    previous_restarts = {}
+    cumulative_restarts = 0
+    ordered_samples = sorted(
+        samples.values(),
+        key=lambda sample_rows: sample_rows[0]["time"],
+    )
+    for sample_rows in ordered_samples:
         sample_time = sample_rows[0]["time"]
-        desired = next(
+        hpa_desired = next(
             (
                 row["hpa_desired_replicas"]
                 for row in sample_rows
                 if row["hpa_desired_replicas"] is not None
+            ),
+            None,
+        )
+        deployment_desired = next(
+            (
+                row["deployment_desired_replicas"]
+                for row in sample_rows
+                if row["deployment_desired_replicas"] is not None
             ),
             None,
         )
@@ -227,13 +257,26 @@ def build_timeline(points, k8s_rows, window):
             ),
             0,
         )
+        for row in sample_rows:
+            pod = row["pod"]
+            if not pod:
+                continue
+            current = row["restart_count"]
+            previous = previous_restarts.get(pod, current)
+            if current > previous:
+                cumulative_restarts += current - previous
+            previous_restarts[pod] = current
         k8s_series.append(
             {
                 "elapsed_s": sample_time - start,
                 "cpu_mcores": sum(row["cpu_mcores"] or 0 for row in sample_rows),
                 "ready_replicas": ready,
-                "desired_replicas": desired if desired is not None else ready,
-                "restarts": sum(row["restart_count"] for row in sample_rows),
+                "desired_replicas": (
+                    hpa_desired
+                    if hpa_desired is not None
+                    else deployment_desired if deployment_desired is not None else ready
+                ),
+                "restarts": cumulative_restarts,
             }
         )
     return buckets, sorted(k8s_series, key=lambda item: item["elapsed_s"])

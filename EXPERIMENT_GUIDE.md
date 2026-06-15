@@ -58,24 +58,29 @@ kubectl apply -f k8s/hpa-200.yaml
 kubectl get hpa invoice-pdf-api-hpa
 ```
 
-## Capacity test để tìm knee
+## Capacity test để xác định knee
 
-Lần chạy mặc định là pilot rộng cho 2 Pod cố định:
+Pilot rộng ngày 15/06/2026 cho thấy 10 RPS còn đạt tiêu chí, trong khi 20 RPS
+đã có HTTP p95 1.58 giây và error rate 6.84%. Vì vậy lần chạy mặc định tiếp
+theo đo chi tiết:
 
 ```text
-10, 20, 40, 60, 80, 100, 120 request/s
+10, 12, 14, 16, 18, 20 request/s
 ```
 
-Mỗi mức giữ 1 phút. Chạy:
+Mỗi mức giữ 3 phút. Chạy ba lần với `SCENARIO` khác nhau:
 
 ```bash
 BASE_URL=http://EXTERNAL_IP \
-SCENARIO=fixed \
+SCENARIO=fixed-knee-run1 \
 LOAD_PROFILE=capacity \
 ./scripts/run-experiment.sh
 ```
 
-Có thể thay dải tải:
+Lặp lại với `fixed-knee-run2` và `fixed-knee-run3`. Trước mỗi lần chạy phải đưa
+Deployment về 2 Pod, chờ cả hai Pod Ready và CPU trở về mức nền.
+
+Có thể ghi đè dải tải khi cần:
 
 ```bash
 BASE_URL=http://EXTERNAL_IP \
@@ -86,9 +91,13 @@ CAPACITY_LEVEL_DURATION=3m \
 ./scripts/run-experiment.sh
 ```
 
-Sau lần quét đầu, chọn vùng p95/error bắt đầu tăng mạnh và chạy lại trong vùng
-đó với bước 5 RPS, mỗi mức giữ 3 phút. Nếu cần xác định chi tiết hơn, giảm tiếp
-xuống bước 1--2 RPS. Knee không được xác định chỉ bằng CPU; cần đọc đồng thời:
+Latency trong lần đo mới được tổng hợp từ metric
+`successful_http_req_duration`, tức chỉ các response vượt qua đủ ba check.
+Timeout, connection error và response không hợp lệ vẫn được phản ánh trong
+error rate. Cách tách này tránh duration bằng 0 của lỗi kết nối làm giảm p50
+hoặc percentile latency.
+
+Knee không được xác định chỉ bằng CPU; cần đọc đồng thời:
 
 - HTTP p95/p99 bắt đầu tăng nhanh.
 - Error rate vượt 1%.

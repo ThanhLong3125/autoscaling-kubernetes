@@ -11,18 +11,22 @@ const REQUEST_TIMEOUT = __ENV.REQUEST_TIMEOUT || "5s";
 const ENFORCE_THRESHOLDS = (__ENV.ENFORCE_THRESHOLDS || "false") === "true";
 
 const processingTime = new Trend("invoice_processing_time", true);
+const successfulRequestDuration = new Trend(
+  "successful_http_req_duration",
+  true,
+);
 const successfulRequests = new Counter("successful_requests");
 const failedRequests = new Counter("failed_requests");
 const validResponses = new Rate("valid_responses");
 
 const profiles = {
   capacity: {
-    description: "Broad capacity pilot for locating the knee region",
+    description: "Fine-grained capacity sweep around the fixed-pod knee",
     rates: integerListEnv(
       "CAPACITY_RATES",
-      [10, 20, 40, 60, 80, 100, 120],
+      [10, 12, 14, 16, 18, 20],
     ),
-    duration: __ENV.CAPACITY_LEVEL_DURATION || "1m",
+    duration: __ENV.CAPACITY_LEVEL_DURATION || "3m",
   },
   hpa: {
     description: "Stepped load for HPA reaction and recovery analysis",
@@ -98,6 +102,7 @@ export function renderInvoice() {
 
   validResponses.add(passed);
   if (passed) {
+    successfulRequestDuration.add(response.timings.duration);
     successfulRequests.add(1);
   } else {
     failedRequests.add(1);
