@@ -44,19 +44,22 @@ kubectl scale deployment invoice-pdf-api --replicas=2
 kubectl rollout status deployment/invoice-pdf-api
 ```
 
-### HPA target 240%
+### HPA target 300% mới
 
 ```bash
-kubectl apply -f k8s/hpa-240.yaml
+kubectl apply -f k8s/hpa-300.yaml
 kubectl get hpa invoice-pdf-api-hpa
 ```
 
-### HPA target 200%
+### HPA target 250% mới
 
 ```bash
-kubectl apply -f k8s/hpa-200.yaml
+kubectl apply -f k8s/hpa-250.yaml
 kubectl get hpa invoice-pdf-api-hpa
 ```
+
+Hai manifest `hpa-240.yaml` và `hpa-200.yaml` được giữ để truy vết phép thử cũ,
+không phải target chính của vòng kiểm chứng mới.
 
 ## Capacity test để xác định knee
 
@@ -105,6 +108,57 @@ Knee không được xác định chỉ bằng CPU; cần đọc đồng thời:
 - Dropped iterations xuất hiện.
 - CPU gần limit, Pod mất Ready hoặc restart.
 
+Ba lần đo fixed đã xác định mức cuối đạt tiêu chí là 16 RPS và mức đầu không
+đạt là 18 RPS. Median CPU tại 16 RPS khoảng 394.7m/Pod, tương ứng 394.7% CPU
+request. Hai target ứng viên là:
+
+```text
+300%: phương án gần knee, ưu tiên sử dụng tài nguyên
+250%: phương án có dự phòng, scale sớm hơn
+```
+
+## Kiểm chứng hai target HPA mới
+
+Mỗi target chạy ba lần với đúng profile capacity 10--20 RPS. Với target 300%:
+
+```bash
+kubectl apply -f k8s/hpa-300.yaml
+kubectl get hpa invoice-pdf-api-hpa
+kubectl wait --for=condition=Ready pod \
+  -l app=invoice-pdf-api \
+  --timeout=180s
+
+BASE_URL=http://EXTERNAL_IP \
+SCENARIO=hpa-300-run1 \
+LOAD_PROFILE=capacity \
+./scripts/run-experiment.sh
+```
+
+Lặp lại với `hpa-300-run2` và `hpa-300-run3`. Chờ HPA trở về 2 replica, tất cả
+Pod Ready và CPU ổn định trước mỗi lần.
+
+Với target 250%:
+
+```bash
+kubectl apply -f k8s/hpa-250.yaml
+
+BASE_URL=http://EXTERNAL_IP \
+SCENARIO=hpa-250-run1 \
+LOAD_PROFILE=capacity \
+./scripts/run-experiment.sh
+```
+
+Lặp lại với `hpa-250-run2` và `hpa-250-run3`. Không thay đổi image, probe,
+resource request/limit hoặc cluster giữa sáu lần chạy.
+
+Sau sáu run, so sánh:
+
+- HTTP p95 và error rate tại 16, 18 và 20 RPS.
+- Thời gian từ khi CPU vượt target đến desired replicas tăng.
+- Thời gian Pod mới đạt Ready.
+- Số restart và thời gian không đủ Pod Ready.
+- Achieved RPS và pod-seconds.
+
 ## HPA reaction test
 
 Profile mặc định:
@@ -122,8 +176,9 @@ LOAD_PROFILE=hpa \
 ./scripts/run-experiment.sh
 ```
 
-Đổi manifest và `SCENARIO=hpa-200` cho target 200%. Timeline sinh ra cho phép
-đo khoảng cách giữa:
+Profile tăng--giảm chỉ chạy sau khi hoàn tất kiểm chứng 300% và 250%. Các mức
+RPS sẽ được chốt theo target thắng vòng capacity. Timeline cho phép đo khoảng
+cách giữa:
 
 ```text
 tải tăng -> CPU tăng -> desired replicas tăng -> Pod Ready -> latency phục hồi

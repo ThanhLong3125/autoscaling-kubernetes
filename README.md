@@ -136,11 +136,11 @@ trong [`EXPERIMENT_GUIDE.md`](EXPERIMENT_GUIDE.md).
 7. Chạy HPA reaction profile cho hai target.
 8. Lặp mỗi cấu hình ít nhất ba lần và so sánh median cùng min--max.
 
-Các manifest HPA:
+Các manifest HPA cho vòng kiểm chứng mới:
 
 ```bash
-kubectl apply -f k8s/hpa-240.yaml
-kubectl apply -f k8s/hpa-200.yaml
+kubectl apply -f k8s/hpa-300.yaml
+kubectl apply -f k8s/hpa-250.yaml
 ```
 
 Để quay về kịch bản fixed trước một lần chạy mới:
