@@ -92,15 +92,23 @@ kubectl get events -n "${NAMESPACE}" --sort-by=.lastTimestamp \
 kubectl get pods -n "${NAMESPACE}" -l "${SELECTOR}" -o json \
   >"${RUN_DIR}/pods-after.json" 2>&1 || true
 
+printf 'finished_utc=%s\nk6_exit_status=%s\n' \
+  "$(date -u --iso-8601=seconds)" "${K6_STATUS}" \
+  >>"${RUN_DIR}/metadata.txt"
+
+PLOT_STATUS=0
 python3 "${ROOT_DIR}/scripts/plot-experiment.py" \
   --k6 "${RUN_DIR}/k6-points.json" \
   --k8s "${RUN_DIR}/k8s-metrics.csv" \
   --output-dir "${RUN_DIR}/charts" \
-  --label "${SCENARIO} - ${LOAD_PROFILE} - ${RUN_ID}"
+  --label "${SCENARIO} - ${LOAD_PROFILE} - ${RUN_ID}" || PLOT_STATUS=$?
 
-printf 'finished_utc=%s\nk6_exit_status=%s\n' \
-  "$(date -u --iso-8601=seconds)" "${K6_STATUS}" \
-  >>"${RUN_DIR}/metadata.txt"
+printf 'plot_exit_status=%s\n' "${PLOT_STATUS}" >>"${RUN_DIR}/metadata.txt"
+
+if [[ "${PLOT_STATUS}" -ne 0 ]]; then
+  echo "WARN: load-test data was saved, but chart generation failed." >&2
+  echo "Rerun scripts/plot-experiment.py after fixing the plotting tool." >&2
+fi
 
 echo "Experiment artifacts: ${RUN_DIR}"
 exit "${K6_STATUS}"

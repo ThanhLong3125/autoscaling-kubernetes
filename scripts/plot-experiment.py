@@ -53,22 +53,38 @@ def percentile(values, value):
 
 def read_k6(path):
     points = []
+    skipped = 0
     with Path(path).open(encoding="utf-8") as handle:
-        for line in handle:
-            record = json.loads(line)
+        for line_number, line in enumerate(handle, start=1):
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                skipped += 1
+                continue
             if record.get("type") != "Point":
                 continue
-            data = record["data"]
+            data = record.get("data", {})
+            metric = record.get("metric") or data.get("metric")
+            time_value = data.get("time")
+            value = data.get("value")
+            if metric is None or time_value is None or value is None:
+                skipped += 1
+                continue
             points.append(
                 {
-                    "metric": data["metric"],
-                    "time": timestamp(data["time"]),
-                    "value": float(data["value"]),
+                    "metric": metric,
+                    "time": timestamp(time_value),
+                    "value": float(value),
                     "tags": data.get("tags", {}),
                 }
             )
     if not points:
-        raise ValueError("The k6 file contains no Point records")
+        raise ValueError(
+            "The k6 file contains no usable Point records. "
+            "Expected JSON output created with: k6 run --out json=FILE"
+        )
+    if skipped:
+        print(f"WARN: skipped {skipped} malformed or incomplete k6 records")
     return points
 
 
