@@ -32,10 +32,12 @@ load_profile=${LOAD_PROFILE}
 base_url=${BASE_URL}
 namespace=${NAMESPACE}
 selector=${SELECTOR}
-capacity_rates=${CAPACITY_RATES:-5,8,11,14,17,20,23,26}
-capacity_level_duration=${CAPACITY_LEVEL_DURATION:-2m}
+capacity_rates=${CAPACITY_RATES:-10,20,40,60,80,100,120}
+capacity_level_duration=${CAPACITY_LEVEL_DURATION:-1m}
 hpa_rates=${HPA_RATES:-5,10,15,20,25,15,5}
 hpa_level_duration=${HPA_LEVEL_DURATION:-3m}
+max_vus_floor=${MAX_VUS:-0}
+automatic_max_vus=rate-x6
 started_utc=$(date -u --iso-8601=seconds)
 EOF
 

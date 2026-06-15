@@ -60,13 +60,13 @@ kubectl get hpa invoice-pdf-api-hpa
 
 ## Capacity test để tìm knee
 
-Mặc định các mức tải là:
+Lần chạy mặc định là pilot rộng cho 2 Pod cố định:
 
 ```text
-5, 8, 11, 14, 17, 20, 23, 26 request/s
+10, 20, 40, 60, 80, 100, 120 request/s
 ```
 
-Mỗi mức giữ 2 phút. Chạy:
+Mỗi mức giữ 1 phút. Chạy:
 
 ```bash
 BASE_URL=http://EXTERNAL_IP \
@@ -86,8 +86,9 @@ CAPACITY_LEVEL_DURATION=3m \
 ./scripts/run-experiment.sh
 ```
 
-Sau lần quét đầu, chọn vùng p95/error bắt đầu tăng mạnh và chạy lại với bước
-1--2 request/s. Knee không được xác định chỉ bằng CPU; cần đọc đồng thời:
+Sau lần quét đầu, chọn vùng p95/error bắt đầu tăng mạnh và chạy lại trong vùng
+đó với bước 5 RPS, mỗi mức giữ 3 phút. Nếu cần xác định chi tiết hơn, giảm tiếp
+xuống bước 1--2 RPS. Knee không được xác định chỉ bằng CPU; cần đọc đồng thời:
 
 - HTTP p95/p99 bắt đầu tăng nhanh.
 - Error rate vượt 1%.

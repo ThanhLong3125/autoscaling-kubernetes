@@ -74,8 +74,8 @@ BASE_URL=http://EXTERNAL_IP REQUESTS=50 node scripts/measure-response-time.js
 
 Nên chạy baseline ít nhất ba lần trong cùng điều kiện. Với mỗi chỉ số, lấy giá
 trị lớn nhất giữa các lần chạy, nhân hệ số 2 và làm tròn lên theo bước 50 ms.
-Ba lần đo hiện tại trên GKE cho ngưỡng HTTP average 250 ms, HTTP p95 450 ms và
-PDF render p95 400 ms. Các ngưỡng này chỉ phục vụ thí nghiệm so sánh; nếu hệ
+Ba lần đo hiện tại trên GKE cho ngưỡng HTTP average 300 ms, HTTP p95 550 ms và
+PDF render p95 450 ms. Các ngưỡng này chỉ phục vụ thí nghiệm so sánh; nếu hệ
 thống có SLA nghiệp vụ cụ thể thì SLA phải được ưu tiên.
 
 ## Cài đặt k6 trên Ubuntu/Debian
@@ -112,8 +112,9 @@ LOAD_PROFILE=capacity \
 ./scripts/run-experiment.sh
 ```
 
-Profile `capacity` phát lần lượt 5, 8, 11, 14, 17, 20, 23 và 26 request/giây
-để xác định knee. Profile `hpa` phát tải
+Profile `capacity` mặc định quét rộng 10, 20, 40, 60, 80, 100 và
+120 request/giây để tìm vùng knee. Sau đó dùng biến `CAPACITY_RATES` để chạy
+lại chi tiết quanh vùng suy giảm. Profile `hpa` phát tải
 5, 10, 15, 20, 25, 15 và 5 request/giây để quan sát scale-up và phục hồi.
 Hai profile dùng arrival rate cố định, vì vậy offered load không tự giảm khi
 response time tăng.

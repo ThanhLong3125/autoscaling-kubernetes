@@ -4,9 +4,9 @@ import { Counter, Rate, Trend } from "k6/metrics";
 
 const BASE_URL = (__ENV.BASE_URL || "http://localhost:8080").replace(/\/$/, "");
 const PROFILE = (__ENV.LOAD_PROFILE || "capacity").toLowerCase();
-const HTTP_AVG_THRESHOLD_MS = numberEnv("HTTP_AVG_THRESHOLD_MS", 250);
-const HTTP_P95_THRESHOLD_MS = numberEnv("HTTP_P95_THRESHOLD_MS", 450);
-const RENDER_P95_THRESHOLD_MS = numberEnv("RENDER_P95_THRESHOLD_MS", 400);
+const HTTP_AVG_THRESHOLD_MS = numberEnv("HTTP_AVG_THRESHOLD_MS", 300);
+const HTTP_P95_THRESHOLD_MS = numberEnv("HTTP_P95_THRESHOLD_MS", 550);
+const RENDER_P95_THRESHOLD_MS = numberEnv("RENDER_P95_THRESHOLD_MS", 450);
 const REQUEST_TIMEOUT = __ENV.REQUEST_TIMEOUT || "5s";
 const ENFORCE_THRESHOLDS = (__ENV.ENFORCE_THRESHOLDS || "false") === "true";
 
@@ -17,9 +17,12 @@ const validResponses = new Rate("valid_responses");
 
 const profiles = {
   capacity: {
-    description: "Fine-grained capacity sweep for knee detection",
-    rates: integerListEnv("CAPACITY_RATES", [5, 8, 11, 14, 17, 20, 23, 26]),
-    duration: __ENV.CAPACITY_LEVEL_DURATION || "2m",
+    description: "Broad capacity pilot for locating the knee region",
+    rates: integerListEnv(
+      "CAPACITY_RATES",
+      [10, 20, 40, 60, 80, 100, 120],
+    ),
+    duration: __ENV.CAPACITY_LEVEL_DURATION || "1m",
   },
   hpa: {
     description: "Stepped load for HPA reaction and recovery analysis",
@@ -114,7 +117,7 @@ function buildScenarios(profile) {
     );
     const maxVUs = Math.max(
       numberEnv("MAX_VUS", 0),
-      Math.ceil(rate * 4),
+      Math.ceil(rate * 6),
       preAllocatedVUs,
     );
 

@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--label", default="Experiment")
     parser.add_argument("--window", type=int, default=10)
-    parser.add_argument("--http-p95-threshold", type=float, default=450)
+    parser.add_argument("--http-p95-threshold", type=float, default=550)
     parser.add_argument("--error-threshold", type=float, default=1)
     args = parser.parse_args()
     if args.window <= 0:
