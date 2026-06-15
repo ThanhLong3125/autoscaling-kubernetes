@@ -101,22 +101,28 @@ Kiểm tra cài đặt:
 k6 version
 ```
 
-## Chạy k6
+## Chạy thực nghiệm k6
 
-Dùng lệnh do script baseline in ra, ví dụ:
+Dùng runner để k6 và Kubernetes collector có chung timestamp:
 
 ```bash
-HTTP_AVG_THRESHOLD_MS=250 \
-HTTP_P95_THRESHOLD_MS=450 \
-RENDER_P95_THRESHOLD_MS=400 \
 BASE_URL=http://EXTERNAL_IP \
-k6 run k6/load-test.js
+SCENARIO=fixed \
+LOAD_PROFILE=capacity \
+./scripts/run-experiment.sh
 ```
 
-k6 tạo hóa đơn 120 dòng ngay trong bộ nhớ và gửi tải theo các mức 5, 15, 30 và
-60 virtual users. Do mỗi vòng lặp nghỉ 1 giây, 60 VU tương ứng xấp xỉ 57--60
-request/giây khi response time còn thấp. Không cần đặt file ảnh hoặc file PDF
-mẫu trong project.
+Profile `capacity` phát lần lượt 5, 8, 11, 14, 17, 20, 23 và 26 request/giây
+để xác định knee. Profile `hpa` phát tải
+5, 10, 15, 20, 25, 15 và 5 request/giây để quan sát scale-up và phục hồi.
+Hai profile dùng arrival rate cố định, vì vậy offered load không tự giảm khi
+response time tăng.
+
+Runner lưu raw k6 JSON, Kubernetes CSV, events, trạng thái Pod và tự sinh knee
+curve cùng timeline trong thư mục `results/`.
+
+Quy trình đầy đủ, cách lặp ba cấu hình và thiết lập biểu đồ GCP Monitoring nằm
+trong [`EXPERIMENT_GUIDE.md`](EXPERIMENT_GUIDE.md).
 
 ## Quy trình thử nghiệm trên GKE
 
@@ -124,16 +130,16 @@ mẫu trong project.
 2. Apply `deployment.yaml` và `service.yaml`.
 3. Chờ external IP và kiểm tra `/healthz`.
 4. Chạy baseline qua external IP để chọn ngưỡng.
-5. Đảm bảo HPA chưa tồn tại, giữ Deployment ở 2 replica và chạy k6 lần fixed.
-6. Apply `hpa.yaml`, chờ metrics sẵn sàng rồi chạy lại cùng lệnh k6.
-7. Trong khi test, ghi CPU, HPA và số Pod theo thời gian.
+5. Chạy capacity test cho cấu hình fixed, HPA 240% và HPA 200%.
+6. Thu hẹp dải RPS quanh knee và chạy lại với bước 1--2 request/giây.
+7. Chạy HPA reaction profile cho hai target.
+8. Lặp mỗi cấu hình ít nhất ba lần và so sánh median cùng min--max.
 
-Các lệnh theo dõi:
+Các manifest HPA:
 
 ```bash
-kubectl get pods -w
-kubectl get hpa -w
-kubectl top pods
+kubectl apply -f k8s/hpa-240.yaml
+kubectl apply -f k8s/hpa-200.yaml
 ```
 
 Để quay về kịch bản fixed trước một lần chạy mới:

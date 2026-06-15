@@ -1,3 +1,6 @@
 node_modules
 app/node_modules
 .env
+results/
+__pycache__/
+*.pyc
