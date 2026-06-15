@@ -63,6 +63,12 @@ không phải target chính của vòng kiểm chứng mới.
 
 ## Capacity test để xác định knee
 
+Manifest `deployment.yaml` dùng startup probe và tăng tolerance thời gian cho
+liveness probe để tránh restart container chỉ vì event loop chậm tạm thời khi
+render PDF. Vì probe là một phần của cấu hình thực nghiệm, sau khi thay đổi
+probe phải chạy lại ba fixed-capacity run và tính lại knee trước khi tiếp tục
+với HPA.
+
 Pilot rộng ngày 15/06/2026 cho thấy 10 RPS còn đạt tiêu chí, trong khi 20 RPS
 đã có HTTP p95 1.58 giây và error rate 6.84%. Vì vậy lần chạy mặc định tiếp
 theo đo chi tiết:

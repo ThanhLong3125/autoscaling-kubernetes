@@ -137,6 +137,9 @@ trong [`EXPERIMENT_GUIDE.md`](EXPERIMENT_GUIDE.md).
 8. Chạy HPA reaction profile cho target 300% và 250%.
 9. Lặp mỗi target ít nhất ba lần và so sánh median, min--max cùng pod-seconds.
 
+Sau khi thay đổi probe, phải chạy lại chuỗi fixed-capacity trước khi kiểm chứng
+HPA. Không trộn kết quả trước và sau thay đổi probe trong cùng bảng so sánh.
+
 Các manifest HPA cho vòng kiểm chứng mới:
 
 ```bash
