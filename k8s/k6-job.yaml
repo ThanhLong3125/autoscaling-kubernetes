@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-load-generator
+  labels:
+    app: k6-load-generator
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: k6-load-generator
+    spec:
+      restartPolicy: Never
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app: invoice-pdf-api
+      containers:
+        - name: k6
+          image: grafana/k6:0.57.0
+          args:
+            - run
+            - --out
+            - json=/results/k6-points.json
+            - --summary-export
+            - /results/k6-summary.json
+            - /scripts/load-test.js
+          envFrom:
+            - configMapRef:
+                name: k6-runtime
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: test-script
+              mountPath: /scripts
+              readOnly: true
+            - name: results
+              mountPath: /results
+      volumes:
+        - name: test-script
+          configMap:
+            name: k6-load-test
+        - name: results
+          emptyDir: {}

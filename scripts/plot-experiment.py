@@ -158,11 +158,66 @@ def summarize_levels(points):
     return rows
 
 
+def summarize_phases(points):
+    groups = defaultdict(lambda: defaultdict(list))
+    offered_rps = {}
+    for point in points:
+        phase = point["tags"].get("phase")
+        level = point["tags"].get("load_level")
+        if phase is None or level is None:
+            continue
+        groups[phase][point["metric"]].append(point["value"])
+        offered_rps[phase] = int(level)
+
+    rows = []
+    for phase in sorted(groups):
+        metrics = groups[phase]
+        durations = (
+            metrics["successful_http_req_duration"]
+            or metrics["http_req_duration"]
+        )
+        failures = metrics["http_req_failed"]
+        requests = metrics["http_reqs"]
+        elapsed = phase_elapsed_seconds(points, phase)
+        rows.append(
+            {
+                "phase": phase,
+                "offered_rps": offered_rps[phase],
+                "samples": len(durations),
+                "achieved_rps": sum(requests) / elapsed if elapsed else None,
+                "http_avg_ms": sum(durations) / len(durations) if durations else None,
+                "http_p50_ms": percentile(durations, 50),
+                "http_p95_ms": percentile(durations, 95),
+                "http_p99_ms": percentile(durations, 99),
+                "error_rate_pct": (
+                    100 * sum(failures) / len(failures) if failures else None
+                ),
+                "render_p95_ms": percentile(
+                    metrics["invoice_processing_time"], 95
+                ),
+                "dropped_iterations": sum(metrics["dropped_iterations"]),
+            }
+        )
+    return rows
+
+
 def level_elapsed_seconds(points, level):
     times = [
         point["time"]
         for point in points
         if point["tags"].get("load_level") == str(level)
+        and point["metric"] in ("http_reqs", "dropped_iterations")
+    ]
+    if len(times) < 2:
+        return None
+    return max(times) - min(times) + 1
+
+
+def phase_elapsed_seconds(points, phase):
+    times = [
+        point["time"]
+        for point in points
+        if point["tags"].get("phase") == phase
         and point["metric"] in ("http_reqs", "dropped_iterations")
     ]
     if len(times) < 2:
@@ -282,8 +337,11 @@ def build_timeline(points, k8s_rows, window):
     return buckets, sorted(k8s_series, key=lambda item: item["elapsed_s"])
 
 
-def write_summary(rows, path):
-    fields = [
+def write_summary(rows, path, include_phase=False):
+    fields = []
+    if include_phase:
+        fields.append("phase")
+    fields.extend([
         "offered_rps",
         "samples",
         "achieved_rps",
@@ -294,7 +352,7 @@ def write_summary(rows, path):
         "error_rate_pct",
         "render_p95_ms",
         "dropped_iterations",
-    ]
+    ])
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
@@ -591,9 +649,15 @@ def main():
     points = read_k6(args.k6)
     k8s_rows = read_k8s(args.k8s)
     rows = summarize_levels(points)
+    phase_rows = summarize_phases(points)
     buckets, k8s_series = build_timeline(points, k8s_rows, args.window)
 
     write_summary(rows, output / "level-summary.csv")
+    write_summary(
+        phase_rows,
+        output / "phase-summary.csv",
+        include_phase=True,
+    )
     draw_knee(
         rows,
         output / "knee.svg",
@@ -603,6 +667,7 @@ def main():
     )
     draw_timeline(buckets, k8s_series, output / "timeline.svg", args.label)
     print(f"Wrote {output / 'level-summary.csv'}")
+    print(f"Wrote {output / 'phase-summary.csv'}")
     print(f"Wrote {output / 'knee.svg'}")
     print(f"Wrote {output / 'timeline.svg'}")
 

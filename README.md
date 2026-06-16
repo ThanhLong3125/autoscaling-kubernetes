@@ -103,6 +103,42 @@ k6 version
 
 ## Chạy thực nghiệm k6
 
+### Chạy tự động bằng Kubernetes Job trên GKE
+
+Để không phải cài k6 và điều phối từng lần chạy thủ công, dùng cloud suite:
+
+```bash
+RUNS=1 HPA_LEVEL_DURATION=1m ./scripts/run-cloud-suite.sh
+```
+
+Nếu chỉ muốn thử nhanh một target HPA mà không chạy lại fixed baseline:
+
+```bash
+RUNS=1 \
+MODES=hpa \
+HPA_RATES=12,14,16,14,12 \
+HPA_LEVEL_DURATIONS=45s,2m,3m,90s,45s \
+./scripts/run-cloud-suite.sh
+```
+
+Sau lần chẩn đoán ngắn, chạy bộ chính ba vòng:
+
+```bash
+./scripts/run-cloud-suite.sh
+```
+
+Suite tự chạy cùng profile `12 -> 14 -> 16 -> 14 -> 12 RPS` cho fixed 2 Pod và HPA 300%,
+thu Kubernetes metrics rồi tạo timeline. Xem quy trình tại
+[`CLOUD_EXPERIMENT_GUIDE.md`](CLOUD_EXPERIMENT_GUIDE.md).
+
+Chạy riêng fixed 2 Pod ba lần để làm lại `test_2`:
+
+```bash
+RUNS=3 MODES=fixed SUITE_ID=test-2-fixed-knee ./scripts/run-cloud-suite.sh
+```
+
+### Chạy k6 từ máy cục bộ
+
 Dùng runner để k6 và Kubernetes collector có chung timestamp:
 
 ```bash
@@ -134,8 +170,9 @@ trong [`EXPERIMENT_GUIDE.md`](EXPERIMENT_GUIDE.md).
 5. Chạy pilot capacity với 2 Pod cố định để khoanh vùng knee.
 6. Thu hẹp dải RPS quanh knee và lặp capacity test ba lần.
 7. Tính target HPA từ CPU tại các mức tải trước knee.
-8. Chạy HPA reaction profile cho target 300% và 250%.
-9. Lặp mỗi target ít nhất ba lần và so sánh median, min--max cùng pod-seconds.
+8. Chạy capacity profile cho target 300% và 250%, mỗi target ít nhất ba lần.
+9. So sánh median, min--max và pod-seconds để chọn target.
+10. Chạy HPA reaction profile tăng--giảm cho target được chọn.
 
 Sau khi thay đổi probe, phải chạy lại chuỗi fixed-capacity trước khi kiểm chứng
 HPA. Không trộn kết quả trước và sau thay đổi probe trong cùng bảng so sánh.

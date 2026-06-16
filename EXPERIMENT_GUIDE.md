@@ -44,14 +44,14 @@ kubectl scale deployment invoice-pdf-api --replicas=2
 kubectl rollout status deployment/invoice-pdf-api
 ```
 
-### HPA target 300% mới
+### HPA target 300%
 
 ```bash
 kubectl apply -f k8s/hpa-300.yaml
 kubectl get hpa invoice-pdf-api-hpa
 ```
 
-### HPA target 250% mới
+### HPA target 250%
 
 ```bash
 kubectl apply -f k8s/hpa-250.yaml
@@ -114,16 +114,17 @@ Knee không được xác định chỉ bằng CPU; cần đọc đồng thời:
 - Dropped iterations xuất hiện.
 - CPU gần limit, Pod mất Ready hoặc restart.
 
-Ba lần đo fixed đã xác định mức cuối đạt tiêu chí là 16 RPS và mức đầu không
-đạt là 18 RPS. Median CPU tại 16 RPS khoảng 394.7m/Pod, tương ứng 394.7% CPU
-request. Hai target ứng viên là:
+Ba lần đo fixed sau khi hiệu chỉnh probe xác định 14 RPS là mức đạt tiêu chí
+trong cả ba lần, 16 RPS là vùng biên và 18 RPS là mức đầu không đạt trong cả
+ba lần. Median CPU/Pod tại 10, 12, 14 và 16 RPS lần lượt khoảng 270.1m,
+302.6m, 359.9m và 397.2m. Hai target ứng viên vẫn là:
 
 ```text
-300%: phương án gần knee, ưu tiên sử dụng tài nguyên
+300%: scale trong vùng 12--14 RPS, ưu tiên sử dụng tài nguyên
 250%: phương án có dự phòng, scale sớm hơn
 ```
 
-## Kiểm chứng hai target HPA mới
+## Kiểm chứng hai target HPA
 
 Mỗi target chạy ba lần với đúng profile capacity 10--20 RPS. Với target 300%:
 

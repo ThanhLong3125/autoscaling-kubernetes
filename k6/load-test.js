@@ -27,11 +27,13 @@ const profiles = {
       [10, 12, 14, 16, 18, 20],
     ),
     duration: __ENV.CAPACITY_LEVEL_DURATION || "3m",
+    durations: durationListEnv("CAPACITY_LEVEL_DURATIONS"),
   },
   hpa: {
-    description: "Stepped load for HPA reaction and recovery analysis",
-    rates: integerListEnv("HPA_RATES", [5, 10, 15, 20, 25, 15, 5]),
+    description: "Threshold profile around the fixed-pod knee",
+    rates: integerListEnv("HPA_RATES", [12, 14, 16, 14, 12]),
     duration: __ENV.HPA_LEVEL_DURATION || "3m",
+    durations: durationListEnv("HPA_LEVEL_DURATIONS"),
   },
 };
 
@@ -110,11 +112,18 @@ export function renderInvoice() {
 }
 
 function buildScenarios(profile) {
-  const levelDurationSeconds = durationToSeconds(profile.duration);
   const scenarios = {};
   let startSeconds = 0;
 
+  if (profile.durations && profile.durations.length !== profile.rates.length) {
+    throw new Error(
+      `Duration list length (${profile.durations.length}) must match rate list length (${profile.rates.length})`,
+    );
+  }
+
   profile.rates.forEach((rate, index) => {
+    const duration = profile.durations?.[index] || profile.duration;
+    const levelDurationSeconds = durationToSeconds(duration);
     const phase = `${String(index + 1).padStart(2, "0")}-${rate}rps`;
     const preAllocatedVUs = Math.max(
       numberEnv("PRE_ALLOCATED_VUS", 0),
@@ -131,7 +140,7 @@ function buildScenarios(profile) {
       exec: "renderInvoice",
       rate,
       timeUnit: "1s",
-      duration: profile.duration,
+      duration,
       startTime: `${startSeconds}s`,
       preAllocatedVUs,
       maxVUs,
@@ -174,6 +183,19 @@ function integerListEnv(name, defaultValue) {
     throw new Error(`${name} must be a comma-separated list of positive integers`);
   }
 
+  return values;
+}
+
+function durationListEnv(name) {
+  const raw = __ENV[name];
+  if (!raw) {
+    return null;
+  }
+
+  const values = raw.split(",").map((item) => item.trim());
+  if (values.length === 0 || values.some((value) => !/^(\d+)(s|m|h)$/.test(value))) {
+    throw new Error(`${name} must be a comma-separated list of durations such as 45s,4m,2m`);
+  }
   return values;
 }
 
