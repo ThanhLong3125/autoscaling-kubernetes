@@ -24,13 +24,19 @@ spec:
       containers:
         - name: k6
           image: grafana/k6:0.57.0
+          command:
+            - /bin/sh
+            - -c
           args:
-            - run
-            - --out
-            - json=/results/k6-points.json
-            - --summary-export
-            - /results/k6-summary.json
-            - /scripts/load-test.js
+            - |
+              k6 run \
+                --out json=/results/k6-points.json \
+                --summary-export /results/k6-summary.json \
+                /scripts/load-test.js
+              status=$?
+              echo "${status}" > /results/k6-exit-status
+              sleep "${RESULT_HOLD_SECONDS:-60}"
+              exit "${status}"
           envFrom:
             - configMapRef:
                 name: k6-runtime

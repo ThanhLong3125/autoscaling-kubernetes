@@ -17,6 +17,7 @@ CAPACITY_LEVEL_DURATION="${CAPACITY_LEVEL_DURATION:-3m}"
 CAPACITY_LEVEL_DURATIONS="${CAPACITY_LEVEL_DURATIONS:-}"
 COLLECT_INTERVAL="${COLLECT_INTERVAL:-5}"
 JOB_TIMEOUT="${JOB_TIMEOUT:-20m}"
+RESULT_HOLD_SECONDS="${RESULT_HOLD_SECONDS:-60}"
 KEEP_JOB="${KEEP_JOB:-false}"
 JOB_NAME="k6-load-generator"
 
@@ -36,25 +37,38 @@ duration_to_seconds() {
   exit 1
 }
 
-wait_for_job() {
+wait_for_results() {
   local timeout_seconds
   timeout_seconds="$(duration_to_seconds "${JOB_TIMEOUT}")"
   local deadline=$((SECONDS + timeout_seconds))
 
   while (( SECONDS < deadline )); do
-    local complete failed
-    complete="$(
-      kubectl get job "${JOB_NAME}" -n "${NAMESPACE}" \
-        -o jsonpath='{.status.succeeded}' 2>/dev/null || true
+    local pod_name phase failed
+    pod_name="$(
+      kubectl get pods -n "${NAMESPACE}" \
+        -l job-name="${JOB_NAME}" \
+        -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true
+    )"
+    if [[ -z "${pod_name}" ]]; then
+      sleep 5
+      continue
+    fi
+
+    phase="$(
+      kubectl get pod "${pod_name}" -n "${NAMESPACE}" \
+        -o jsonpath='{.status.phase}' 2>/dev/null || true
     )"
     failed="$(
       kubectl get job "${JOB_NAME}" -n "${NAMESPACE}" \
         -o jsonpath='{.status.failed}' 2>/dev/null || true
     )"
-    if [[ "${complete:-0}" -ge 1 ]]; then
+
+    if kubectl exec -n "${NAMESPACE}" "${pod_name}" -- \
+      test -f /results/k6-exit-status >/dev/null 2>&1; then
       return 0
     fi
-    if [[ "${failed:-0}" -ge 1 ]]; then
+
+    if [[ "${phase}" == "Failed" || "${failed:-0}" -ge 1 ]]; then
       return 1
     fi
     sleep 5
@@ -84,6 +98,7 @@ hpa_level_durations=${HPA_LEVEL_DURATIONS}
 capacity_rates=${CAPACITY_RATES}
 capacity_level_duration=${CAPACITY_LEVEL_DURATION}
 capacity_level_durations=${CAPACITY_LEVEL_DURATIONS}
+result_hold_seconds=${RESULT_HOLD_SECONDS}
 started_utc=$(date -u --iso-8601=seconds)
 EOF
 
@@ -138,6 +153,7 @@ kubectl create configmap k6-runtime \
   --from-literal=CAPACITY_RATES="${CAPACITY_RATES}" \
   --from-literal=CAPACITY_LEVEL_DURATION="${CAPACITY_LEVEL_DURATION}" \
   --from-literal=CAPACITY_LEVEL_DURATIONS="${CAPACITY_LEVEL_DURATIONS}" \
+  --from-literal=RESULT_HOLD_SECONDS="${RESULT_HOLD_SECONDS}" \
   --from-literal=ENFORCE_THRESHOLDS=false \
   -n "${NAMESPACE}" \
   --dry-run=client -o yaml |
@@ -148,8 +164,8 @@ kubectl delete job "${JOB_NAME}" -n "${NAMESPACE}" \
 kubectl apply -n "${NAMESPACE}" -f "${ROOT_DIR}/k8s/k6-job.yaml"
 
 set +e
-wait_for_job
-JOB_STATUS=$?
+wait_for_results
+RESULT_STATUS=$?
 set -e
 
 POD_NAME="$(
@@ -165,13 +181,25 @@ fi
 kubectl logs -n "${NAMESPACE}" "${POD_NAME}" \
   >"${RUN_DIR}/k6-console.txt" 2>&1 || true
 
+K6_STATUS=1
+if [[ "${RESULT_STATUS}" -eq 0 ]]; then
+  K6_STATUS="$(
+    kubectl exec -n "${NAMESPACE}" "${POD_NAME}" -- \
+      cat /results/k6-exit-status 2>/dev/null || echo 1
+  )"
+fi
+
 COPY_STATUS=0
-kubectl cp \
-  "${NAMESPACE}/${POD_NAME}:/results/k6-points.json" \
-  "${RUN_DIR}/k6-points.json" || COPY_STATUS=$?
-kubectl cp \
-  "${NAMESPACE}/${POD_NAME}:/results/k6-summary.json" \
-  "${RUN_DIR}/k6-summary.json" || COPY_STATUS=$?
+if [[ "${RESULT_STATUS}" -eq 0 ]]; then
+  kubectl cp \
+    "${NAMESPACE}/${POD_NAME}:/results/k6-points.json" \
+    "${RUN_DIR}/k6-points.json" || COPY_STATUS=$?
+  kubectl cp \
+    "${NAMESPACE}/${POD_NAME}:/results/k6-summary.json" \
+    "${RUN_DIR}/k6-summary.json" || COPY_STATUS=$?
+else
+  COPY_STATUS=1
+fi
 
 sleep 15
 cleanup_collector
@@ -183,8 +211,8 @@ kubectl get events -n "${NAMESPACE}" --sort-by=.lastTimestamp \
 kubectl get pods -n "${NAMESPACE}" -l app=invoice-pdf-api -o json \
   >"${RUN_DIR}/pods-after.json" 2>&1 || true
 
-printf 'finished_utc=%s\njob_wait_status=%s\ncopy_status=%s\n' \
-  "$(date -u --iso-8601=seconds)" "${JOB_STATUS}" "${COPY_STATUS}" \
+printf 'finished_utc=%s\nresult_wait_status=%s\nk6_exit_status=%s\ncopy_status=%s\n' \
+  "$(date -u --iso-8601=seconds)" "${RESULT_STATUS}" "${K6_STATUS}" "${COPY_STATUS}" \
   >>"${RUN_DIR}/metadata.txt"
 
 PLOT_STATUS=0
@@ -201,7 +229,7 @@ printf 'plot_exit_status=%s\n' "${PLOT_STATUS}" >>"${RUN_DIR}/metadata.txt"
 
 echo "Experiment artifacts: ${RUN_DIR}"
 
-if [[ "${JOB_STATUS}" -ne 0 || "${COPY_STATUS}" -ne 0 ]]; then
+if [[ "${RESULT_STATUS}" -ne 0 || "${K6_STATUS}" -ne 0 || "${COPY_STATUS}" -ne 0 ]]; then
   echo "ERROR: cloud experiment did not complete cleanly" >&2
   exit 1
 fi
